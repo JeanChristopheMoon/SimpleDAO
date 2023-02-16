@@ -1,0 +1,91 @@
+pragma solidity ^0.8.0;
+
+contract MyDAO {
+    address public owner;
+    uint256 public totalFunds;
+    mapping(address => uint256) public balances;
+
+    struct Proposal {
+        uint256 id;
+        address creator;
+        string title;
+        string description;
+        uint256 votesFor;
+        uint256 votesAgainst;
+        bool executed;
+        string[] comments;
+    }
+
+    Proposal[] public proposals;
+
+    mapping(address => mapping(uint256 => bool)) public hasVoted;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function contribute() public payable {
+        require(msg.value > 0, "Contribution must be greater than 0");
+        balances[msg.sender] += msg.value;
+        totalFunds += msg.value;
+    }
+
+    function withdraw(uint256 amount) public {
+        require(amount > 0, "Amount must be greater than 0");
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+        balances[msg.sender] -= amount;
+        totalFunds -= amount;
+        payable(msg.sender).transfer(amount);
+    }
+
+    function transferOwnership(address newOwner) public {
+        require(msg.sender == owner, "Only the owner can transfer ownership");
+        owner = newOwner;
+    }
+
+    function createProposal(string memory title, string memory description) public {
+        require(balances[msg.sender] > 0, "Must have a balance to create a proposal");
+        uint256 proposalId = proposals.length;
+        proposals.push(Proposal({
+            id: proposalId,
+            creator: msg.sender,
+            title: title,
+            description: description,
+            votesFor: 0,
+            votesAgainst: 0,
+            executed: false,
+            comments: new string[](0)
+        }));
+    }
+
+    function vote(uint256 proposalId, bool voteFor) public {
+        require(balances[msg.sender] > 0, "Must have a balance to vote");
+        require(!hasVoted[msg.sender][proposalId], "Can only vote once per proposal");
+        Proposal storage proposal = proposals[proposalId];
+        require(!proposal.executed, "Cannot vote on an executed proposal");
+
+        if (voteFor) {
+            proposal.votesFor += balances[msg.sender];
+        } else {
+            proposal.votesAgainst += balances[msg.sender];
+        }
+
+        hasVoted[msg.sender][proposalId] = true;
+    }
+
+    function addComment(uint256 proposalId, string memory comment) public {
+        require(balances[msg.sender] > 0, "Must have a balance to add a comment");
+        Proposal storage proposal = proposals[proposalId];
+        proposal.comments.push(comment);
+    }
+
+    function executeProposal(uint256 proposalId) public {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.creator == msg.sender, "Only the creator can execute a proposal");
+        require(!proposal.executed, "Cannot execute an already executed proposal");
+        require(proposal.votesFor > proposal.votesAgainst, "Proposal did not receive enough votes");
+
+        proposal.executed = true;
+        // execute the proposal code here
+    }
+}
