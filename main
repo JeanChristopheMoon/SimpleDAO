@@ -1,10 +1,15 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract MyDAO {
+contract SimpleDAO {
+    // Variables
     address public owner;
     uint256 public totalFunds;
     mapping(address => uint256) public balances;
+    Proposal[] public proposals;
+    mapping(address => mapping(uint256 => bool)) public hasVoted;
 
+    // Structs
     struct Proposal {
         uint256 id;
         address creator;
@@ -16,14 +21,12 @@ contract MyDAO {
         string[] comments;
     }
 
-    Proposal[] public proposals;
-
-    mapping(address => mapping(uint256 => bool)) public hasVoted;
-
+    // Constructor
     constructor() {
         owner = msg.sender;
     }
 
+    // Functions
     function contribute() public payable {
         require(msg.value > 0, "Contribution must be greater than 0");
         balances[msg.sender] += msg.value;
@@ -61,6 +64,7 @@ contract MyDAO {
     function vote(uint256 proposalId, bool voteFor) public {
         require(balances[msg.sender] > 0, "Must have a balance to vote");
         require(!hasVoted[msg.sender][proposalId], "Can only vote once per proposal");
+
         Proposal storage proposal = proposals[proposalId];
         require(!proposal.executed, "Cannot vote on an executed proposal");
 
@@ -75,6 +79,7 @@ contract MyDAO {
 
     function addComment(uint256 proposalId, string memory comment) public {
         require(balances[msg.sender] > 0, "Must have a balance to add a comment");
+
         Proposal storage proposal = proposals[proposalId];
         proposal.comments.push(comment);
     }
@@ -86,6 +91,6 @@ contract MyDAO {
         require(proposal.votesFor > proposal.votesAgainst, "Proposal did not receive enough votes");
 
         proposal.executed = true;
-        // execute the proposal code here
+        // Execute the proposal code here
     }
 }
